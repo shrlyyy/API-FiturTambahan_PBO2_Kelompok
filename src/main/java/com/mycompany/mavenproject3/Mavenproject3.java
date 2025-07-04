@@ -10,11 +10,9 @@ package com.mycompany.mavenproject3;
  */
 
 import javax.swing.*;
-
-import com.mycompany.mavenproject3.Mavenproject3.BannerPanel;
-
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Mavenproject3 extends JFrame implements Runnable {
     private String text;
@@ -85,9 +83,24 @@ public class Mavenproject3 extends JFrame implements Runnable {
         });
 
         sellingButton.addActionListener(e -> {
-        SellingForm sellingForm = new SellingForm(form, sharedCustomers, ReservationForm.getReservations());
-        sellingForm.setVisible(true);
+            ReservationDAO reservationDAO = null;
+            try {
+                reservationDAO = new ReservationDAO();
+                List<Reservation> reservationList = reservationDAO.getAllReservations();
+                SellingForm sellingForm = new SellingForm(form, sharedCustomers, reservationList, currentUser.getUsername());
+                sellingForm.setVisible(true);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Gagal load reservasi: " + ex.getMessage());
+            } finally {
+                if (reservationDAO != null) {
+                    try {
+                        reservationDAO.close();
+                    } catch (Exception ex) {
+                    }
+                }
+            }
         });
+
 
         reservationButton.addActionListener(e -> {
             ReservationForm reservationForm = new ReservationForm(sharedCustomers, currentUser.getUsername());
@@ -171,6 +184,7 @@ public class Mavenproject3 extends JFrame implements Runnable {
     public void updateBannerText(String newText) {
         this.text = newText;
         x = -bannerPanel.getFontMetrics(new Font("Arial", Font.BOLD, 18)).stringWidth(newText);
+        bannerPanel.repaint();
     }
 
     public static void main(String[] args) {

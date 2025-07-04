@@ -28,7 +28,7 @@ public class CustomerDAO {
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, c.getId());
             stmt.setString(2, c.getName());
-            stmt.setLong(3, c.getPhoneNumber());
+            stmt.setString(3, c.getPhoneNumber());
             stmt.setString(4, c.getAddress());
             stmt.setString(5, c.getAuditInfo().getCreatedBy());
             stmt.executeUpdate();
@@ -39,7 +39,7 @@ public class CustomerDAO {
         String sql = "UPDATE customer SET name=?, phoneNumber=?, address=?, editedBy=? WHERE id=?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, c.getName());
-            stmt.setLong(2, c.getPhoneNumber());
+            stmt.setString(2, c.getPhoneNumber());
             stmt.setString(3, c.getAddress());
             stmt.setString(4, c.getAuditInfo().getEditedBy());
             stmt.setString(5, c.getId());
@@ -66,7 +66,7 @@ public class CustomerDAO {
             Customer c = new Customer(
                 rs.getString("id"),
                 rs.getString("name"),
-                rs.getLong("phoneNumber"),
+                rs.getString("phoneNumber"),
                 rs.getString("address")
             );
             c.getAuditInfo().setCreatedBy(rs.getString("createdBy"));

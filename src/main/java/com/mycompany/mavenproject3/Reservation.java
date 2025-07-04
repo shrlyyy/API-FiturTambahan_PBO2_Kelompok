@@ -12,8 +12,8 @@ import java.time.LocalTime;
  * @author ASUS
  */
 public class Reservation {
-    private int reservationId;
-    private int customerId;
+    private String reservationId;
+    private String customerId;
     private LocalDate reservationDate;
     private LocalTime reservationTime;
     private String table;
@@ -24,7 +24,7 @@ public class Reservation {
 
     private AuditInfo auditInfo = new AuditInfo();
 
-    public Reservation(int reservationId, int customerId, LocalDate reservationDate, LocalTime reservationTime, String table, int numberOfPeople, String createdBy, String editedBy, String deletedBy) {
+    public Reservation(String reservationId, String customerId, LocalDate reservationDate, LocalTime reservationTime, String table, int numberOfPeople, String createdBy, String editedBy, String deletedBy) {
         this.reservationId = reservationId;
         this.customerId = customerId;
         this.reservationDate = reservationDate;
@@ -36,11 +36,11 @@ public class Reservation {
         this.deletedBy = deletedBy;
     }
 
-    public int getReservationId() { return reservationId; }
-    public void setReservationId(int reservationId) { this.reservationId = reservationId; }
+    public String getReservationId() { return reservationId; }
+    public void setReservationId(String reservationId) { this.reservationId = reservationId; }
 
-    public int getCustomerId() { return customerId; }
-    public void setCustomerId(int customerId) { this.customerId = customerId; }
+    public String getCustomerId() { return customerId; }
+    public void setCustomerId(String customerId) { this.customerId = customerId; }
 
     public LocalDate getReservationDate() { return reservationDate; }
     public void setReservationDate(LocalDate reservationDate) { this.reservationDate = reservationDate; }

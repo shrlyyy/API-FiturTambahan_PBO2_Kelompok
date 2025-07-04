@@ -11,6 +11,12 @@ package com.mycompany.mavenproject3;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +35,7 @@ public class ProductForm extends JFrame {
     private boolean isEditing = false;
     private int editingIndex = -1;
     private Cashier currentUser;
+    private ProductDAO productDAO;
 
     public interface ProductChangeListener {
         void onProductsChanged();
@@ -45,13 +52,9 @@ public class ProductForm extends JFrame {
 
     public ProductForm(Cashier currentUser) {
         this.currentUser = currentUser;
+        this.productDAO = new ProductDAO();
 
         products = new ArrayList<>();
-        products.add(new Product(1, "P001", "Americano", "Coffee", 18000, 10));
-        products.add(new Product(2, "P002", "Pandan Latte", "Coffee", 15000, 8));
-        products.add(new Product(3, "P003", "Aren Latte", "Coffee", 17000, 5));
-        products.add(new Product(4, "P004", "Matcha Frappucino", "Coffee", 23000, 12));
-        products.add(new Product(5, "P005", "Jus Apel", "Juice", 22000, 9));
         
         setTitle("WK. Cuan | Stok Barang");
         setSize(700, 450);
@@ -99,16 +102,17 @@ public class ProductForm extends JFrame {
         drinkTable = new JTable(tableModel);
         getContentPane().add(new JScrollPane(drinkTable), BorderLayout.CENTER);
 
-        loadProductData(products);
+        loadProductData();
 
         saveButton.addActionListener(e -> saveProduct());
 
         deleteButton.addActionListener(e -> {
             int selectedRow = drinkTable.getSelectedRow();
             if (selectedRow != -1) {
-                products.remove(selectedRow);
-                loadProductData(products);
-                if (listener != null) listener.onProductsChanged();
+                Product selectedProduct = products.get(selectedRow);
+                productDAO.deleteProduct(selectedProduct.getId());
+
+                loadProductData();
                 clearFields();
                 isEditing = false;
                 editingIndex = -1;
@@ -116,6 +120,7 @@ public class ProductForm extends JFrame {
                 JOptionPane.showMessageDialog(this, "Pilih produk untuk menghapus.");
             }
         });
+
 
         drinkTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -145,26 +150,31 @@ public class ProductForm extends JFrame {
                 String category = (String) categoryField.getSelectedItem();
                 double price = Double.parseDouble(priceField.getText());
                 int stock = Integer.parseInt(stockField.getText());
-        
-            if (isEditing && editingIndex != -1) {
-                Product existing = products.get(editingIndex);
-                existing.setCode(code);
-                existing.setName(name);
-                existing.setCategory(category);
-                existing.setPrice(price);
-                existing.setStock(stock);
-                existing.getAuditInfo().setEditedBy(currentUser.getUsername());
-                existing.getAuditInfo().setCreatedBy(null); // Optional: clear createdBy
-            } else {
-                int id = products.size() + 1;
-                Product newProduct = new Product(id, code, name, category, price, stock);
-                newProduct.getAuditInfo().setCreatedBy(currentUser.getUsername());
-                products.add(newProduct);
-            }
-        
-                loadProductData(products);
-                if (listener != null) listener.onProductsChanged();
+
+                if (isEditing && editingIndex != -1) {
+                    Product existing = products.get(editingIndex);
+                    existing.setCode(code);
+                    existing.setName(name);
+                    existing.setCategory(category);
+                    existing.setPrice(price);
+                    existing.setStock(stock);
+                    existing.getAuditInfo().setEditedBy(currentUser.getUsername());
+
+                    productDAO.updateProduct(existing);
+                } else {
+                    Product newProduct = new Product(0, code, name, category, price, stock);
+                    AuditInfo audit = new AuditInfo();
+                    audit.setCreatedBy(currentUser.getUsername());
+                    newProduct.setAuditInfo(audit);
+
+                    productDAO.insertProduct(newProduct);
+                }
+
+                loadProductData();
                 clearFields();
+                isEditing = false;
+                editingIndex = -1;
+
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Input tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -178,30 +188,28 @@ public class ProductForm extends JFrame {
             categoryField.setSelectedIndex(0);
         }
 
-    public void loadProductData(List<Product> productList) {
-        tableModel.setRowCount(0);
-        for (Product product : productList) {
-            String lastActionBy = "-";
-            AuditInfo audit = product.getAuditInfo();
-            
-            if (audit.getDeletedBy() != null) {
-                lastActionBy = "Deleted by " + audit.getDeletedBy();
-            } else if (audit.getEditedBy() != null) {
-                lastActionBy = "Edited by " + audit.getEditedBy();
-            } else if (audit.getCreatedBy() != null) {
-                lastActionBy = "Created by " + audit.getCreatedBy();
+    public void loadProductData() {
+        products = productDAO.getAllProducts();
+            tableModel.setRowCount(0);
+            for (Product product : products) {
+                String lastAction = "-";
+                AuditInfo audit = product.getAuditInfo();
+                if (audit != null) {
+                    lastAction = audit.getEditedBy() != null ? audit.getEditedBy() : audit.getCreatedBy();
+                }
+                tableModel.addRow(new Object[]{
+                    product.getCode(),
+                    product.getName(),
+                    product.getCategory(),
+                    Currency.formatRupiah(product.getPrice()),
+                    product.getStock(),
+                    lastAction
+                });
             }
 
-            tableModel.addRow(new Object[]{
-                product.getCode(),
-                product.getName(),
-                product.getCategory(),
-                product.getPrice(),
-                product.getStock(),
-                lastActionBy
-            });
+            if (listener != null) listener.onProductsChanged();
         }
-    }
+
 
     public String getProductBannerText() {
         if (products.isEmpty()) return "Menu tidak tersedia";

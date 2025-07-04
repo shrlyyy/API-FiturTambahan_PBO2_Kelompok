@@ -79,7 +79,7 @@ public class CustomerForm extends JFrame {
             customers.addAll(customerDAO.getAllCustomers());
             registeredPhones.clear();
             for (Customer c : customers) {
-                registeredPhones.add(c.getPhoneNumber().toString());
+                registeredPhones.add(c.getPhoneNumber());
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Gagal koneksi/muat data: " + e.getMessage());
@@ -99,7 +99,7 @@ public class CustomerForm extends JFrame {
                     customerDAO.deleteCustomer(removed.getId(), currentUser);
                     
                     customers.remove(selectedRow);
-                    registeredPhones.remove(removed.getPhoneNumber().toString());
+                    registeredPhones.remove(removed.getPhoneNumber());
                     refreshTable();
                     clearFields();
                     isEditing = false;
@@ -118,7 +118,7 @@ public class CustomerForm extends JFrame {
                 if (selectedRow != -1) {
                     Customer c = customers.get(selectedRow);
                     nameField.setText(c.getName());
-                    phoneNumberField.setText(c.getPhoneNumber().toString());
+                    phoneNumberField.setText(c.getPhoneNumber());
                     addressField.setText(c.getAddress());
                     editingIndex = selectedRow;
                     isEditing = true;
@@ -142,20 +142,21 @@ public class CustomerForm extends JFrame {
                 return;
             }
 
-            if (!phoneText.matches("\\d+")) {
-                JOptionPane.showMessageDialog(this, "Nomor telepon harus berupa angka!");
-                return;
-            }
+        if (!phoneText.matches("\\d+")) {
+            JOptionPane.showMessageDialog(this, "Nomor telepon harus berupa angka!");
+            return;
+        }
 
-            Long phoneNumber = Long.parseLong(phoneText);
+        String phoneNumber = phoneText;
+
 
             if (isEditing && editingIndex != -1) {
                 Customer existing = customers.get(editingIndex);
-                if (!existing.getPhoneNumber().toString().equals(phoneText) && registeredPhones.contains(phoneText)) {
+                if (!existing.getPhoneNumber().equals(phoneText) && registeredPhones.contains(phoneText)) {
                     JOptionPane.showMessageDialog(this, "Nomor telepon sudah terdaftar!");
                     return;
                 }
-                registeredPhones.remove(existing.getPhoneNumber().toString());
+                registeredPhones.remove(existing.getPhoneNumber());
                 registeredPhones.add(phoneText);
 
                 existing.setName(name);
@@ -189,7 +190,7 @@ public class CustomerForm extends JFrame {
                     customers.addAll(customerDAO.getAllCustomers());
                     registeredPhones.clear();
                     for (Customer c : customers) {
-                        registeredPhones.add(c.getPhoneNumber().toString());
+                        registeredPhones.add(c.getPhoneNumber());
                     }
                 } catch (SQLException e) {
                     JOptionPane.showMessageDialog(this, "Gagal simpan ke database: " + e.getMessage());

@@ -29,8 +29,8 @@ public class ReservationDAO {
     public void insertReservation(Reservation r) throws SQLException {
         String sql = "INSERT INTO reservation (reservationId, customerId, reservationDate, reservationTime, reservedTable, numberOfPeople, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, String.format("R%03d", r.getReservationId()));
-            stmt.setString(2, String.format("C%03d", r.getCustomerId()));
+            stmt.setString(1, r.getReservationId());
+            stmt.setString(2, r.getCustomerId());
             stmt.setDate(3, Date.valueOf(r.getReservationDate()));
             stmt.setTime(4, Time.valueOf(r.getReservationTime()));
             stmt.setString(5, r.getTable());
@@ -41,14 +41,14 @@ public class ReservationDAO {
     }
 
     public void updateReservation(Reservation r) throws SQLException {
-        String sql = "UPDATE reservation SET reservationDate=?, reservationTime=?, reservedTable=?, numberOfPeople=?, editedBy=? WHERE reservationId=?";
+        String sql = "UPDATE reservation SET reservationDate=?, reservationTime=?, reservedTable=?, numberOfPeople=?, editedBy=? WHERE reservationId=? AND deletedBy IS NULL";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, Date.valueOf(r.getReservationDate()));
             stmt.setTime(2, Time.valueOf(r.getReservationTime()));
             stmt.setString(3, r.getTable());
             stmt.setInt(4, r.getNumberOfPeople());
             stmt.setString(5, r.getEditedBy());
-            stmt.setString(6, String.format("R%03d", r.getReservationId()));
+            stmt.setString(6, r.getReservationId());
             stmt.executeUpdate();
         }
     }
@@ -64,12 +64,12 @@ public class ReservationDAO {
 
     public List<Reservation> getAllReservations() throws SQLException {
         List<Reservation> list = new ArrayList<>();
-        String sql = "SELECT * FROM reservation";
+        String sql = "SELECT * FROM reservation WHERE deletedBy IS NULL";
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+            ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                int resId = Integer.parseInt(rs.getString("reservationId").replaceAll("\\D+", ""));
-                int custId = Integer.parseInt(rs.getString("customerId").replaceAll("\\D+", ""));
+                String resId = rs.getString("reservationId");
+                String custId = rs.getString("customerId");
                 LocalDate date = rs.getDate("reservationDate").toLocalDate();
                 LocalTime time = rs.getTime("reservationTime").toLocalTime();
                 String table = rs.getString("reservedTable");
