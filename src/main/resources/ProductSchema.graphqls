@@ -1,0 +1,70 @@
+type Product {
+    id: ID!
+    code: String!
+    name: String!
+    category: String!
+    price: Float!
+    stock: Int!
+}
+
+type Customer {
+    id: String!
+    name: String!
+    phoneNumber: String!
+    address: String!
+}
+
+type Reservation {
+    reservationId: ID!
+    customerId: ID!
+    reservationDate: String!
+    reservationTime: String!
+    reservedTable: String!
+    numberOfPeople: Int!
+}
+
+type SaleTransaction {
+    id: ID!
+    customerId: ID!
+    cashierName: String!
+    date: String!
+    time: String!
+    saleItems: [SaleItem!]!
+}
+
+type SaleItem {
+    id: ID!
+    saleId: ID!
+    product: Product!
+    quantity: Int!
+}
+
+type Query {
+    allProducts: [Product]
+    productById(id: ID!): Product
+
+    allCustomers: [Customer]
+    customerById(id: ID!): Customer
+
+    allReservations: [Reservation]
+    reservationById(reservationId: ID!): Reservation
+
+    allSales: [SaleTransaction]
+    saleById(id: ID!): SaleTransaction
+
+    soldItemsBySaleId(saleId: ID!): [SaleItem]
+}
+
+type Mutation {
+    addProduct(code: String!, name: String!, category: String!, price: Float!, stock: Int!): Product
+    updateProduct(id: ID!, code: String!, name: String!, category: String!, price: Float!, stock: Int!): Product
+    deleteProduct(id: ID!): Boolean 
+
+    addCustomer(name: String!, phoneNumber: String!, address: String!): Customer
+    updateCustomer(id: ID!, name: String!, phoneNumber: String!, address: String!): Customer
+    deleteCustomer(id: ID!): Boolean
+
+    addReservation(customerId: ID!, reservationDate: String!, reservationTime: String!, reservedTable: String!, numberOfPeople: Int!): Reservation
+    updateReservation(reservationId: ID!, customerId: ID!, reservationDate: String!, reservationTime: String!, reservedTable: String!, numberOfPeople: Int!): Reservation
+    deleteReservation(reservationId: ID!): Boolean
+}
