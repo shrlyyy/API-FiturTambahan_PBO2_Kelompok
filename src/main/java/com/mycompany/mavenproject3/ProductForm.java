@@ -31,6 +31,7 @@ public class ProductForm extends JFrame {
     private JTextField stockField;
     private JButton saveButton;
     private JButton deleteButton;
+    private JButton refeshButton;
     private List<Product> products;
     private boolean isEditing = false;
     private int editingIndex = -1;
@@ -88,9 +89,11 @@ public class ProductForm extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         saveButton = new JButton("Simpan");
         deleteButton = new JButton("Hapus");
+        refeshButton = new JButton("Refresh");
 
         buttonPanel.add(saveButton);
         buttonPanel.add(deleteButton);
+        buttonPanel.add(refeshButton);
         
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(formPanel, BorderLayout.CENTER);
@@ -140,6 +143,13 @@ public class ProductForm extends JFrame {
                     isEditing = false;
                 }
             }
+        });
+
+        refeshButton.addActionListener(e -> {
+            loadProductData();
+            clearFields();
+            isEditing = false;
+            editingIndex = -1;
         });
     }
     

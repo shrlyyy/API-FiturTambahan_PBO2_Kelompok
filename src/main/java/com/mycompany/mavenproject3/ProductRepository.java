@@ -1,9 +1,16 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.mycompany.mavenproject3;
+
+/**
+ *
+ * @author ASUS
+ */
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.mycompany.mavenproject3.Product;
-import com.mycompany.mavenproject3.AuditInfo;
 
 public class ProductRepository {
     private Connection conn;
@@ -49,11 +56,10 @@ public class ProductRepository {
         }
     }
 
-    public boolean deleteProduct(int id, String deletedBy) throws SQLException {
-        String sql = "UPDATE product SET deletedBy=? WHERE id=?";
+    public boolean deleteProduct(int id) throws SQLException {
+        String sql = "DELETE FROM product WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, deletedBy);
-            ps.setInt(2, id);
+            ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         }
     }
@@ -82,4 +88,31 @@ public class ProductRepository {
         }
         return products;
     }
+
+    public Product findById(int id) throws SQLException {
+        String sql = "SELECT * FROM product WHERE id = ? AND deletedBy IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Product p = new Product(
+                        rs.getInt("id"),
+                        rs.getString("code"),
+                        rs.getString("name"),
+                        rs.getString("category"),
+                        rs.getDouble("price"),
+                        rs.getInt("stock")
+                    );
+                    AuditInfo audit = new AuditInfo();
+                    audit.setCreatedBy(rs.getString("createdBy"));
+                    audit.setEditedBy(rs.getString("editedBy"));
+                    audit.setDeletedBy(rs.getString("deletedBy"));
+                    p.setAuditInfo(audit);
+                    return p;
+                }
+            }
+        }
+        return null;
+    }
+
 }
