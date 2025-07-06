@@ -133,6 +133,13 @@ public class Mavenproject3 extends JFrame implements Runnable {
 
         updateBannerText(form.getProductBannerText());
 
+        try {
+            CustomerDAO customerDAO = new CustomerDAO();
+            sharedCustomers = new ArrayList<>(customerDAO.getAllCustomers());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Gagal memuat data customer: " + ex.getMessage());
+        }
+        
         addProductButton.setVisible(true);
         customerButton.setVisible(true);
         sellingButton.setVisible(true);
