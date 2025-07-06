@@ -17,7 +17,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import com.mycompany.mavenproject3.ProductConfig;
-import com.mycompany.mavenproject3.ProductRepository;
+import com.mycompany.mavenproject3.ProductDAO;
 
 import graphql.schema.GraphQLSchema;
 
@@ -32,14 +32,8 @@ public class GraphQLConfig {
         SchemaParser schemaParser = new SchemaParser();
         TypeDefinitionRegistry typeRegistry = schemaParser.parse(schema);
 
-        // Buat koneksi database
-        String url = "jdbc:mysql://localhost:3306/fiturtambahan-pbo2";
-        String username = "root";
-        String password = "";
-        Connection conn = DriverManager.getConnection(url, username, password);
-
-        ProductRepository productRepo = new ProductRepository(conn);
-        RuntimeWiring wiring = ProductConfig.buildWiring(productRepo);
+        ProductDAO productDAO = new ProductDAO();
+        RuntimeWiring wiring = ProductConfig.buildWiring(productDAO);
 
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         GraphQLSchema graphQLSchema = schemaGenerator.makeExecutableSchema(typeRegistry, wiring);

@@ -14,18 +14,18 @@ import java.io.*;
 import java.util.Objects;
 import graphql.schema.GraphQLSchema;
 
-import com.mycompany.mavenproject3.ProductRepository;
+import com.mycompany.mavenproject3.ProductDAO;
 
 
 public class ProductConfig {
 
-    public static RuntimeWiring buildWiring(ProductRepository productRepo) {
+    public static RuntimeWiring buildWiring(ProductDAO productDAO) {
         return RuntimeWiring.newRuntimeWiring()
             .type("Query", typeWiring -> typeWiring
-                .dataFetcher("allProducts", env -> productRepo.findAll())
+                .dataFetcher("allProducts", env -> productDAO.getAllProducts())
                 .dataFetcher("productById", env -> {
                     int id = Integer.parseInt(env.getArgument("id").toString());
-                    return productRepo.findById(id);
+                    return productDAO.findById(id);
                 })
             )
 
@@ -40,10 +40,10 @@ public class ProductConfig {
                         (int) env.getArgument("stock")
                     );
                     AuditInfo audit = new AuditInfo();
-                    audit.setCreatedBy("currentUser"); // ambil dari session/login kalau ada
+                    audit.setCreatedBy("admin_web");
                     p.setAuditInfo(audit);
 
-                    return productRepo.addProduct(p);
+                    return productDAO.insertProduct(p);
                 })
 
                 .dataFetcher("updateProduct", env -> {
@@ -56,15 +56,15 @@ public class ProductConfig {
                         (int) env.getArgument("stock")
                     );
                     AuditInfo audit = new AuditInfo();
-                    audit.setEditedBy("currentUser");
+                    audit.setEditedBy("admin_web");
                     p.setAuditInfo(audit);
 
-                    return productRepo.updateProduct(p);
+                    return productDAO.updateProduct(p);
                 })
 
                 .dataFetcher("deleteProduct", env -> {
                     int id = Integer.parseInt(env.getArgument("id").toString());
-                    return productRepo.deleteProduct(id);
+                    return productDAO.deleteProduct(id);
                 })
             )
             .build();
