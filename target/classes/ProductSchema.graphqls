@@ -17,6 +17,7 @@ type Customer {
 type Reservation {
     reservationId: ID!
     customerId: ID!
+    customerName: String!
     reservationDate: String!
     reservationTime: String!
     reservedTable: String!

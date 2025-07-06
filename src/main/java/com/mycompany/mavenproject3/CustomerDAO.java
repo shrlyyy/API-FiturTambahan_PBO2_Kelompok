@@ -24,7 +24,7 @@ public class CustomerDAO {
         );
     }
 
-    // Generate next ID seperti C001, C002, ...
+    // Generate next ID
     private String generateNextId() throws SQLException {
         String lastId = null;
         String sql = "SELECT id FROM customer ORDER BY id DESC LIMIT 1";
@@ -59,7 +59,7 @@ public class CustomerDAO {
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Gagal menyimpan data customer baru.");
-            throw e;  // lempar supaya caller bisa tahu gagal
+            throw e;
         }
         return c;
     }

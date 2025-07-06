@@ -37,11 +37,13 @@ public class GraphQLConfig {
         // DAO
         ProductDAO productDAO = new ProductDAO();
         CustomerDAO customerDAO = new CustomerDAO();
+        ReservationDAO reservationDAO = new ReservationDAO();
 
         // Gabung config ke builder
         RuntimeWiring.Builder wiringBuilder = RuntimeWiring.newRuntimeWiring();
         ProductConfig.register(wiringBuilder, productDAO);
         CustomerConfig.register(wiringBuilder, customerDAO);
+        ReservationConfig.register(wiringBuilder, reservationDAO);
 
         // Final build
         RuntimeWiring wiring = wiringBuilder.build();

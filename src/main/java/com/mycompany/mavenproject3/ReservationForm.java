@@ -18,6 +18,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -33,6 +34,7 @@ public class ReservationForm extends JFrame {
     private JTextField tableField;
     private JButton saveButton;
     private JButton deleteButton;
+    private JButton refreshButton;
     private boolean isEditing = false;
     private String editingReservationId = null;
 
@@ -100,8 +102,10 @@ public class ReservationForm extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         saveButton = new JButton("Simpan");
         deleteButton = new JButton("Hapus");
+        refreshButton = new JButton("Refresh");
         buttonPanel.add(saveButton);
         buttonPanel.add(deleteButton);
+        buttonPanel.add(refreshButton);
 
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(formPanel, BorderLayout.CENTER);
@@ -117,6 +121,7 @@ public class ReservationForm extends JFrame {
         try {
             reservationDAO = new ReservationDAO(); // mirip seperti customerDAO di CustomerForm
             reservations = new ArrayList<>(reservationDAO.getAllReservations());
+            refreshTable();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Gagal load reservasi: " + e.getMessage());
         }
@@ -178,7 +183,17 @@ public class ReservationForm extends JFrame {
             }
         });
 
-        refreshTable();
+        refreshButton.addActionListener(e -> {
+            try {
+                reservations = new ArrayList<>(reservationDAO.getAllReservations()); // reload dari DB
+                clearFields();
+                isEditing = false;
+                editingReservationId = null;
+                refreshTable();
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Gagal refresh data: " + ex.getMessage());
+            }
+        });
     }
 
     private String getPhoneByCustomerId(String custId) {
@@ -216,71 +231,81 @@ public class ReservationForm extends JFrame {
     }
 
     private void saveReservation() {
-        String idCust = idField.getText();
-        String nameCust = nameField.getText();
-        int numPeople;
+        String idCust = idField.getText().trim();
+        String nameCust = nameField.getText().trim();
         String table = tableField.getText().trim();
+        String numPeopleStr = numberOfPeopleField.getText().trim();
 
         if (idCust.isEmpty() || nameCust.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Cari dan pilih customer terlebih dahulu.");
             return;
         }
+
         if (table.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Meja harus diisi.");
+            JOptionPane.showMessageDialog(this, "Meja tidak boleh kosong.");
             return;
         }
 
+        int numPeople;
         try {
-            numPeople = Integer.parseInt(numberOfPeopleField.getText().trim());
+            numPeople = Integer.parseInt(numPeopleStr);
+            if (numPeople <= 0) throw new NumberFormatException();
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Jumlah orang harus angka.");
+            JOptionPane.showMessageDialog(this, "Jumlah orang harus angka lebih dari 0.");
+            return;
+        }
+
+        LocalDate localDate = datePicker.getDate();
+        LocalTime localTime = timePicker.getTime();
+
+        if (localDate == null || localTime == null) {
+            JOptionPane.showMessageDialog(this, "Tanggal dan jam reservasi harus diisi.");
             return;
         }
 
         try {
-            LocalDate localDate = datePicker.getDate();
-            LocalTime localTime = timePicker.getTime();
+            if (isEditing && editingReservationId != null) {
+                for (Reservation r : reservations) {
+                    if (r.getReservationId().equals(editingReservationId)) {
+                        r.setCustomerId(idCust);
+                        r.setReservationDate(localDate);
+                        r.setReservationTime(localTime);
+                        r.setTable(table);
+                        r.setNumberOfPeople(numPeople);
+                        r.setEditedBy(currentUser);
+                        r.setCreatedBy(null);
+                        r.setDeletedBy(null);
 
-            String customerId = idCust.trim();
-
-        if (isEditing && editingReservationId != null) {
-            for (Reservation r : reservations) {
-                if (r.getReservationId().equals(editingReservationId)) {
-                    r.setCustomerId(customerId);
-                    r.setReservationDate(localDate);
-                    r.setReservationTime(localTime);
-                    r.setTable(table);
-                    r.setNumberOfPeople(numPeople);
-                    r.setEditedBy(currentUser);
-                    r.setCreatedBy(null);
-                    r.setDeletedBy(null);
-
-                    reservationDAO.updateReservation(r);
-                    break;
+                        reservationDAO.updateReservation(r);
+                        break;
+                    }
                 }
+                JOptionPane.showMessageDialog(this, "Reservasi berhasil diperbarui.");
+            } else {
+                Reservation newRes = new Reservation(
+                    null, // biar DAO generate otomatis
+                    idCust,
+                    localDate,
+                    localTime,
+                    table,
+                    numPeople,
+                    currentUser,
+                    null,
+                    null
+                );
+                reservationDAO.insertReservation(newRes);
+                reservations.add(newRes); // tambahkan hasil dari DB
+                JOptionPane.showMessageDialog(this, "Reservasi berhasil disimpan.");
             }
-            JOptionPane.showMessageDialog(this, "Reservasi berhasil diperbarui.");
-        } else {
-            String reservationId = String.format("R%03d", reservations.size() + 1);
-
-            Reservation newRes = new Reservation(
-                reservationId, customerId, localDate, localTime, table, numPeople,
-                currentUser, null, null
-            );
-
-            reservations.add(newRes);
-            reservationDAO.insertReservation(newRes);
-
-            JOptionPane.showMessageDialog(this, "Reservasi berhasil disimpan.");
-        }
-
 
             clearFields();
+            reservations = new ArrayList<>(reservationDAO.getAllReservations());
             refreshTable();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Format input tidak valid: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "Gagal menyimpan reservasi: " + ex.getMessage());
         }
     }
+
 
     private void deleteReservation() {
         int selectedRow = reservationTable.getSelectedRow();
@@ -299,7 +324,7 @@ public class ReservationForm extends JFrame {
             if (toRemove != null) {
                 try {
                     String formattedId = "R" + String.format("%03d", resId);
-                    reservationDAO.deleteReservation(formattedId, currentUser);
+                    reservationDAO.deleteReservation(formattedId);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(this, "Gagal hapus reservasi dari database: " + ex.getMessage());
                     return;
@@ -333,37 +358,27 @@ public class ReservationForm extends JFrame {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
         for (Reservation r : reservations) {
-            String custName = "";
-            String formattedCustomerId = r.getCustomerId();
-            for (Customer c : customers) {
-                if (c.getId().equals(formattedCustomerId)) {
-                    custName = c.getName();
-                    break;
-                }
-            }
-            String formattedReservationId = r.getReservationId();
-
-            // Tambahkan logika lastAction
-            String lastActionBy = "-";
-            if (r.getDeletedBy() != null) {
-                lastActionBy = "Deleted by " + r.getDeletedBy();
-            } else if (r.getEditedBy() != null) {
-                lastActionBy = "Edited by " + r.getEditedBy();
-            } else if (r.getCreatedBy() != null) {
-                lastActionBy = "Created by " + r.getCreatedBy();
-            }
+            String custName = findCustomerNameById(r.getCustomerId());
 
             tableModel.addRow(new Object[]{
-                formattedReservationId,
-                formattedCustomerId,
+                r.getReservationId(),
+                r.getCustomerId(),
                 custName,
                 r.getReservationDate(),
                 r.getReservationTime().format(timeFormatter),
                 r.getTable(),
                 r.getNumberOfPeople(),
-                lastActionBy
             });
         }
+    }
+
+    private String findCustomerNameById(String customerId) {
+        for (Customer c : customers) {
+            if (c.getId().equals(customerId)) {
+                return c.getName();
+            }
+        }
+        return "(Unknown)";
     }
 
     public ArrayList<Reservation> getReservations() {

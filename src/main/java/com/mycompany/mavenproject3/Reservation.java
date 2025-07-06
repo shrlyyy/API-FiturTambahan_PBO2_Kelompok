@@ -51,6 +51,8 @@ public class Reservation {
     public String getTable() { return table; }
     public void setTable(String table) { this.table = table; }
 
+    public String getReservedTable() { return this.table; }
+    
     public int getNumberOfPeople() { return numberOfPeople; }
     public void setNumberOfPeople(int numberOfPeople) { this.numberOfPeople = numberOfPeople; }
 
