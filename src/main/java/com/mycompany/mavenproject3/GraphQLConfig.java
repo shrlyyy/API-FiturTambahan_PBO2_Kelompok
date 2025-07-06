@@ -18,11 +18,13 @@ import java.sql.SQLException;
 
 import com.mycompany.mavenproject3.ProductConfig;
 import com.mycompany.mavenproject3.ProductDAO;
+import com.mycompany.mavenproject3.CustomerConfig;
+import com.mycompany.mavenproject3.CustomerDAO;
 
 import graphql.schema.GraphQLSchema;
 
 public class GraphQLConfig {
-    public static GraphQL init() throws IOException, SQLException {
+    public static GraphQL init() throws IOException, SQLException, ClassNotFoundException {
         InputStream schemaStream = GraphQLConfig.class.getClassLoader().getResourceAsStream("ProductSchema.graphqls");
         if (schemaStream == null) {
             throw new RuntimeException("ProductSchema.graphqls not found in classpath.");
@@ -32,14 +34,22 @@ public class GraphQLConfig {
         SchemaParser schemaParser = new SchemaParser();
         TypeDefinitionRegistry typeRegistry = schemaParser.parse(schema);
 
+        // DAO
         ProductDAO productDAO = new ProductDAO();
-        RuntimeWiring wiring = ProductConfig.buildWiring(productDAO);
+        CustomerDAO customerDAO = new CustomerDAO();
 
-        SchemaGenerator schemaGenerator = new SchemaGenerator();
-        GraphQLSchema graphQLSchema = schemaGenerator.makeExecutableSchema(typeRegistry, wiring);
+        // Gabung config ke builder
+        RuntimeWiring.Builder wiringBuilder = RuntimeWiring.newRuntimeWiring();
+        ProductConfig.register(wiringBuilder, productDAO);
+        CustomerConfig.register(wiringBuilder, customerDAO);
+
+        // Final build
+        RuntimeWiring wiring = wiringBuilder.build();
+        GraphQLSchema graphQLSchema = new SchemaGenerator().makeExecutableSchema(typeRegistry, wiring);
 
         return GraphQL.newGraphQL(graphQLSchema).build();
     }
 }
+
 
 

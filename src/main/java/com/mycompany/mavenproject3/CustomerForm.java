@@ -19,27 +19,27 @@ public class CustomerForm extends JFrame {
     private JTextField phoneNumberField;
     private JTextField addressField;
     private JButton saveButton;
+    private JButton refreshButton;
     private JButton deleteButton;
     private JTable customerTable;
     private DefaultTableModel tableModel;
 
     private ArrayList<String> registeredPhones = new ArrayList<>();
-    private ArrayList<Customer> customers;
+    private ArrayList<Customer> customers = new ArrayList<>();
     private boolean isEditing = false;
     private int editingIndex = -1;
     private String currentUser;
     private CustomerDAO customerDAO;
 
-    public CustomerForm(ArrayList<Customer> customers, String currentUser) {
-        this.customers = customers;
+    public CustomerForm(String currentUser) {
         this.currentUser = currentUser;
 
         setTitle("WK. Cuan | Form Customer");
-        setSize(700, 300);
+        setSize(700, 350);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Form Panel
+        // Panel form input
         JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
         formPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
@@ -55,12 +55,14 @@ public class CustomerForm extends JFrame {
         addressField = new JTextField();
         formPanel.add(addressField);
 
-        // Tombol Panel
+        // Panel tombol simpan dan hapus
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         saveButton = new JButton("Simpan");
         deleteButton = new JButton("Hapus");
+        refreshButton = new JButton("Refresh");
         buttonPanel.add(saveButton);
         buttonPanel.add(deleteButton);
+        buttonPanel.add(refreshButton);
 
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(formPanel, BorderLayout.CENTER);
@@ -68,50 +70,55 @@ public class CustomerForm extends JFrame {
 
         getContentPane().add(topPanel, BorderLayout.NORTH);
 
-        // Tabel
-        tableModel = new DefaultTableModel(new String[]{"ID", "Nama", "Nomor Telepon", "Alamat", "Last Action By:"}, 0);
+        // Table untuk menampilkan customer
+        tableModel = new DefaultTableModel(new String[]{"ID", "Nama", "Nomor Telepon", "Alamat", "Last Action By"}, 0) {
+            public boolean isCellEditable(int row, int column) {
+                return false; // Disable editing di tabel
+            }
+        };
         customerTable = new JTable(tableModel);
         getContentPane().add(new JScrollPane(customerTable), BorderLayout.CENTER);
 
+        // Inisialisasi DAO dan load data
         try {
             customerDAO = new CustomerDAO();
-            customers.clear();
-            customers.addAll(customerDAO.getAllCustomers());
-            registeredPhones.clear();
-            for (Customer c : customers) {
-                registeredPhones.add(c.getPhoneNumber());
-            }
+            refreshCustomerDataFromDB();
+            refreshTable();
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Gagal koneksi/muat data: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Gagal koneksi/muat data: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
 
-        refreshTable();
-
-        // Event tombol
+        // Event tombol simpan
         saveButton.addActionListener(e -> saveCustomer());
 
+        // Event tombol hapus
         deleteButton.addActionListener(e -> {
             int selectedRow = customerTable.getSelectedRow();
             if (selectedRow != -1) {
                 Customer removed = customers.get(selectedRow);
-                try {
-                    // Panggil dengan dua parameter id dan username yang menghapus
-                    customerDAO.deleteCustomer(removed.getId(), currentUser);
-                    
-                    customers.remove(selectedRow);
-                    registeredPhones.remove(removed.getPhoneNumber());
-                    refreshTable();
-                    clearFields();
-                    isEditing = false;
-                    editingIndex = -1;
-                } catch (SQLException ex) {
-                    JOptionPane.showMessageDialog(this, "Gagal menghapus dari database: " + ex.getMessage());
+                int confirm = JOptionPane.showConfirmDialog(this, "Yakin ingin menghapus customer ini?", "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    try {
+                        boolean success = customerDAO.deleteCustomer(removed.getId());
+                        if (success) {
+                            refreshCustomerDataFromDB();
+                            refreshTable();
+                            clearFields();
+                            isEditing = false;
+                            editingIndex = -1;
+                        } else {
+                            JOptionPane.showMessageDialog(this, "Gagal menghapus dari database.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (SQLException ex) {
+                        JOptionPane.showMessageDialog(this, "Error saat hapus data: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             } else {
-                JOptionPane.showMessageDialog(this, "Pilih customer untuk dihapus.");
+                JOptionPane.showMessageDialog(this, "Pilih customer untuk dihapus.", "Info", JOptionPane.INFORMATION_MESSAGE);
             }
         });
 
+        // Event pilih data dari tabel
         customerTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selectedRow = customerTable.getSelectedRow();
@@ -129,6 +136,19 @@ public class CustomerForm extends JFrame {
                 }
             }
         });
+
+        refreshButton.addActionListener(e -> {
+            try {
+                refreshCustomerDataFromDB();
+                refreshTable();
+                clearFields();
+                isEditing = false;
+                editingIndex = -1;
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Gagal refresh data: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
     }
 
     private void saveCustomer() {
@@ -138,72 +158,62 @@ public class CustomerForm extends JFrame {
             String address = addressField.getText().trim();
 
             if (name.isEmpty() || phoneText.isEmpty() || address.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Semua kolom harus diisi!");
+                JOptionPane.showMessageDialog(this, "Semua kolom harus diisi!", "Warning", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-        if (!phoneText.matches("\\d+")) {
-            JOptionPane.showMessageDialog(this, "Nomor telepon harus berupa angka!");
-            return;
-        }
-
-        String phoneNumber = phoneText;
-
+            if (!phoneText.matches("\\d+")) {
+                JOptionPane.showMessageDialog(this, "Nomor telepon harus berupa angka!", "Warning", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
             if (isEditing && editingIndex != -1) {
                 Customer existing = customers.get(editingIndex);
-                if (!existing.getPhoneNumber().equals(phoneText) && registeredPhones.contains(phoneText)) {
-                    JOptionPane.showMessageDialog(this, "Nomor telepon sudah terdaftar!");
+                // Cek duplikat nomor telepon jika diganti
+                if (!existing.getPhoneNumber().equals(phoneText) && isPhoneRegistered(phoneText)) {
+                    JOptionPane.showMessageDialog(this, "Nomor telepon sudah terdaftar!", "Warning", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-                registeredPhones.remove(existing.getPhoneNumber());
-                registeredPhones.add(phoneText);
-
                 existing.setName(name);
-                existing.setPhoneNumber(phoneNumber);
+                existing.setPhoneNumber(phoneText);
                 existing.setAddress(address);
                 existing.getAuditInfo().setEditedBy(currentUser);
 
-                try {
-                    customerDAO.updateCustomer(existing);
-                    // reload data dari DB agar update audit info dan lain2 sinkron
-                    customers.clear();
-                    customers.addAll(customerDAO.getAllCustomers());
-                    registeredPhones.clear();
-                    for (Customer c : customers) {
-                        registeredPhones.add(c.getPhoneNumber().toString());
-                    }
-                } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(this, "Gagal update ke database: " + e.getMessage());
-                }
+                customerDAO.updateCustomer(existing);
             } else {
-                if (registeredPhones.contains(phoneText)) {
-                    JOptionPane.showMessageDialog(this, "Nomor telepon sudah terdaftar!");
+                if (isPhoneRegistered(phoneText)) {
+                    JOptionPane.showMessageDialog(this, "Nomor telepon sudah terdaftar!", "Warning", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-
-                Customer newCustomer = new Customer(name, phoneNumber, address);
+                Customer newCustomer = new Customer(name, phoneText, address);
                 newCustomer.getAuditInfo().setCreatedBy(currentUser);
-                try {
-                    customerDAO.insertCustomer(newCustomer);
-                    customers.clear();
-                    customers.addAll(customerDAO.getAllCustomers());
-                    registeredPhones.clear();
-                    for (Customer c : customers) {
-                        registeredPhones.add(c.getPhoneNumber());
-                    }
-                } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(this, "Gagal simpan ke database: " + e.getMessage());
-                }
+                customerDAO.insertCustomer(newCustomer);
             }
 
+            refreshCustomerDataFromDB();
             refreshTable();
             clearFields();
             isEditing = false;
             editingIndex = -1;
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Gagal simpan/update ke database: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Input tidak valid!", "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private boolean isPhoneRegistered(String phone) {
+        for (Customer c : customers) {
+            if (c.getPhoneNumber().equals(phone)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void refreshCustomerDataFromDB() throws SQLException {
+        customers.clear();
+        customers.addAll(customerDAO.getAllCustomers());
     }
 
     private void clearFields() {
@@ -224,7 +234,6 @@ public class CustomerForm extends JFrame {
             } else if (audit.getCreatedBy() != null && !audit.getCreatedBy().isEmpty()) {
                 lastActionBy = "Created by " + audit.getCreatedBy();
             }
-
             tableModel.addRow(new Object[]{
                 c.getId(),
                 c.getName(),
@@ -233,5 +242,7 @@ public class CustomerForm extends JFrame {
                 lastActionBy
             });
         }
+        customerTable.revalidate();
+        customerTable.repaint();
     }
 }

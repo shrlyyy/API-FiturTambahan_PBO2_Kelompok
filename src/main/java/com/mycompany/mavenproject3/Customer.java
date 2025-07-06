@@ -9,7 +9,6 @@ package com.mycompany.mavenproject3;
  * @author ASUS
  */
 public class Customer {
-    private static int counter = 1;
     private String id;
     private String name;
     private String phoneNumber;
@@ -18,18 +17,18 @@ public class Customer {
     private AuditInfo auditInfo = new AuditInfo();
 
     public Customer(String name, String phoneNumber, String address) {
-        this.id = String.format("C%03d", counter++);
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.address = address;
     }
 
     public Customer(String id, String name, String phoneNumber, String address) {
-    this.id = id;
-    this.name = name;
-    this.phoneNumber = phoneNumber;
-    this.address = address;
+        this.id = id;
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+        this.address = address;
     }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
